@@ -1,0 +1,138 @@
+import logging
+import json
+import os
+from datetime import datetime
+from telegram import ReplyKeyboardMarkup, Update
+from telegram.ext import (
+    ApplicationBuilder, CommandHandler, ContextTypes, 
+    MessageHandler, filters, ConversationHandler
+)
+
+# Настройка логирования
+logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
+
+# Состояния диалога
+CHOOSING_PLANT_TO_ADD, CHOOSING_PLANT_TO_CARE, CHOOSING_PLANT_TO_WATER = range(3)
+
+# Файл базы данных
+DATA_FILE = "plants_data.json"
+
+def load_data():
+    if os.path.exists(DATA_FILE):
+        with open(DATA_FILE, "r", encoding="utf-8") as f:
+            return json.load(f)
+    return {}
+
+def save_data():
+    with open(DATA_FILE, "w", encoding="utf-8") as f:
+        json.dump(user_plants, f, ensure_ascii=False, indent=4)
+
+user_plants = load_data()
+
+PLANT_TIPS = {
+    "фикус бенджамина": "Любит яркий рассеянный свет. Поливайте, когда верхний слой почвы подсохнет.",
+    "роза": "Требует много света (6+ часов). Важен регулярный полив без переувлажнения.",
+    "суккулент": "Любит солнце. Поливайте редко, давая почве полностью просохнуть.",
+    "кактус": "Нуждается в ярком свете. Зимой почти не поливать, летом — раз в 2 недели.",
+    "орхидея": "Нуждается в коре. Полив методом погружения горшка в воду на 15 минут.",
+    "замиокулькас": "Крайне неприхотлив. Поливайте редко, боится перелива.",
+    "сансевиерия": "Выживет даже в тени. Поливать можно раз в месяц зимой.",
+    "спатифиллум": "Любит влажность. Если листья поникли — пора поливать.",
+    "монстера": "Любит полутень и высокую влажность. Опрыскивайте листья.",
+    "драцена": "Предпочитает светлое место. Не заливайте, иначе корни могут сгнить.",
+    "алоэ": "Лечебное растение. Любит свет, полив редкий — раз в 2-3 недели.",
+    "хлорофитум": "Неприхотлив. Хорошо растет при рассеянном свете.",
+    "герань": "Любит солнце и свежий воздух. Летом поливайте обильно.",
+    "бегония": "Нужен яркий, но не прямой свет. Почва должна быть слегка влажной.",
+    "толстянка": "Денежное дерево. Не заливайте! Полив после просыхания земли."
+}
+
+MAIN_KEYBOARD = [['🌱 Мои растения', '➕ Добавить'], ['📖 Советы', '💧 Я полил!']]
+MARKUP = ReplyKeyboardMarkup(MAIN_KEYBOARD, resize_keyboard=True)
+
+# Функция СТАРТ — вызывается кнопкой "Запустить" в Telegram
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text(
+        "Привет! Я твой помощник по растениям 🌿\nВыбери действие на кнопках ниже:", 
+        reply_markup=MARKUP
+    )
+    return ConversationHandler.END
+
+async def ask_add(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("Напиши название растения для добавления:")
+    return CHOOSING_PLANT_TO_ADD
+
+async def confirm_add(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    name = update.message.text
+    user_id = str(update.effective_user.id)
+    if user_id not in user_plants: user_plants[user_id] = []
+    user_plants[user_id].append({"name": name, "last_watered": "Еще не поливали"})
+    save_data()
+    await update.message.reply_text(f"✅ '{name}' добавлено! Что дальше?", reply_markup=MARKUP)
+    return ConversationHandler.END
+
+async def ask_care(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("О каком растении рассказать? (Напр: Роза, Кактус)")
+    return CHOOSING_PLANT_TO_CARE
+
+async def show_care(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    name = update.message.text.lower()
+    tip = PLANT_TIPS.get(name, "Я пока не знаю это растение.")
+    await update.message.reply_text(f"📖 {name.capitalize()}: {tip}\n\nВыбери действие:", reply_markup=MARKUP)
+    return ConversationHandler.END
+
+async def ask_water(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("Какое растение ты полил?")
+    return CHOOSING_PLANT_TO_WATER
+
+async def confirm_water(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    name = update.message.text.lower()
+    user_id = str(update.effective_user.id)
+    now = datetime.now().strftime("%d.
+[23.03.2026 14:38] тимур: %m %H:%M")
+    found = False
+    for p in user_plants.get(user_id, []):
+        if p['name'].lower() == name:
+            p['last_watered'] = now
+            found = True
+            break
+    if found: save_data()
+    msg = f"💧 Записал полив для '{name}'! ✅" if found else "❌ Нет в списке."
+    await update.message.reply_text(f"{msg}\nВыбери действие:", reply_markup=MARKUP)
+    return ConversationHandler.END
+
+async def show_my_plants(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = str(update.effective_user.id)
+    plants = user_plants.get(user_id, [])
+    res = "🌿 Список:\n" + "\n".join([f"• {p['name']} (Полив: {p['last_watered']})" for p in plants]) if plants else "Твой сад пуст."
+    await update.message.reply_text(f"{res}\n\nВыбери действие:", reply_markup=MARKUP)
+    return ConversationHandler.END
+
+def main():
+    TOKEN = "8700856760:AAF_IxRtp7E8yYqY1x4elJhwZvbp5JYKPz4"
+    app = ApplicationBuilder().token(TOKEN).connect_timeout(30).read_timeout(30).build()
+
+    conv_handler = ConversationHandler(
+        entry_points=[
+            CommandHandler("start", start),
+            MessageHandler(filters.Regex('^➕ Добавить$'), ask_add),
+            MessageHandler(filters.Regex('^📖 Советы$'), ask_care),
+            MessageHandler(filters.Regex('^💧 Я полил!$'), ask_water),
+            MessageHandler(filters.Regex('^🌱 Мои растения$'), show_my_plants),
+        ],
+        states={
+            CHOOSING_PLANT_TO_ADD: [MessageHandler(filters.TEXT & ~filters.COMMAND, confirm_add)],
+            CHOOSING_PLANT_TO_CARE: [MessageHandler(filters.TEXT & ~filters.COMMAND, show_care)],
+            CHOOSING_PLANT_TO_WATER: [MessageHandler(filters.TEXT & ~filters.COMMAND, confirm_water)],
+        },
+        fallbacks=[CommandHandler("start", start)],
+    )
+
+    app.add_handler(conv_handler)
+    app.add_handler(CommandHandler("start", start))
+
+    print("Бот запущен.)
+    app.run_polling()
+
+if name == '__main__':
+    main()
