@@ -25,5 +25,7 @@
    ```bash
    pip install python-telegram-bot
 Получи токен: Напиши @BotFather в Telegram и создай нового бота.
+
 Настрой код: Вставь свой токен в файл main.py в переменную TOKEN.
+
 Запусти: Нажми кнопку Run в PyCharm
