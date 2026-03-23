@@ -1,6 +1,6 @@
 # plants
 <img width="1192" height="838" alt="image" src="https://github.com/user-attachments/assets/fa07d454-9703-485f-b562-fa42de5f57d8" />
-# 🌿 GreenHelper Bot
+# 🌿 Plants Bot
 
 **GreenHelper** — это умный Telegram-бот на Python, созданный для тех, кто любит свои домашние растения, но иногда забывает о поливе. Бот помогает вести список ваших цветов, хранит историю ухода и знает секреты выращивания 15 самых популярных видов растений.
 
