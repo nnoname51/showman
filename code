@@ -109,7 +109,7 @@ async def show_my_plants(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return ConversationHandler.END
 
 def main():
-    TOKEN = "8700856760:AAF_IxRtp7E8yYqY1x4elJhwZvbp5JYKPz4"
+    TOKEN = "your token"
     app = ApplicationBuilder().token(TOKEN).connect_timeout(30).read_timeout(30).build()
 
     conv_handler = ConversationHandler(
